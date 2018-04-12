@@ -213,7 +213,7 @@ class TensorFlowManager:
                 executable.collect_results(
                     [res[executable] for res in session_results])
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals,too-many-arguments
     def execute(self,
                 dataset: Dataset,
                 execution_scripts,
@@ -221,10 +221,11 @@ class TensorFlowManager:
                 compute_losses=True,
                 summaries=True,
                 batch_size=None,
+                batching_scheme="basic",
                 log_progress: int = 0) -> List[ExecutionResult]:
         if batch_size is None:
             batch_size = len(dataset)
-        batched_dataset = dataset.batch_dataset(batch_size)
+        batched_dataset = dataset.batch_dataset(batch_size, batching_scheme)
         last_log_time = time.process_time()
 
         batch_results = [
