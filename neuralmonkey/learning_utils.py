@@ -182,8 +182,7 @@ def training_loop(tf_manager: TensorFlowManager,
                                     last_log_time, log_period_time):
                     trainer_result = tf_manager.execute(
                         batch_dataset, [trainer], train=True,
-                        summaries=True, batch_bucket_span=batch_bucket_span,
-                        token_level_batching=token_level_batching)
+                        summaries=True)
                     train_results, train_outputs = run_on_dataset(
                         tf_manager, runners, batch_dataset,
                         postprocess, write_out=False,
@@ -206,9 +205,7 @@ def training_loop(tf_manager: TensorFlowManager,
                     tf_manager.execute(
                         batch_dataset, [trainer],
                         train=True,
-                        summaries=False,
-                        batch_bucket_span=batch_bucket_span,
-                        token_level_batching=token_level_batching)
+                        summaries=False)
 
                 if _is_logging_time(step, val_period_batch,
                                     last_val_time, val_period_time):
@@ -414,8 +411,6 @@ def run_on_dataset(tf_manager: TensorFlowManager,
     all_results = tf_manager.execute(dataset, runners,
                                      compute_losses=contains_targets,
                                      batch_size=batch_size,
-                                     batch_bucket_span=batch_bucket_span,
-                                     token_level_batching=token_level_batching,
                                      log_progress=log_progress)
 
     result_data = {runner.output_series: result.outputs
