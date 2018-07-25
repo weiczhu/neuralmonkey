@@ -423,7 +423,7 @@ def run_on_dataset(tf_manager: TensorFlowManager,
             return False
 
         supported_type = Union[
-            List[Dict[str, np.ndarray]],
+            List[Dict[str, Union[np.ndarray, np.float32]]],
             List[List[Dict[str, np.ndarray]]]]
 
         try:
