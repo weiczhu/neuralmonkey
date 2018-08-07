@@ -7,8 +7,7 @@ from typeguard import check_argument_types
 from neuralmonkey.model.model_part import ModelPart
 from neuralmonkey.runners.base_runner import (
     Executable, ExecutionResult, NextExecute)
-from neuralmonkey.trainers.regularizers import (
-    Regularizer, L2Regularizer)
+from neuralmonkey.trainers.regularizers import (Regularizer, L2Regularizer)
 
 # pylint: disable=invalid-name
 Gradients = List[Tuple[tf.Tensor, tf.Variable]]
@@ -40,6 +39,7 @@ class Objective(NamedTuple(
 
 
 # pylint: disable=too-few-public-methods,too-many-locals,too-many-branches
+# pylint: disable=too-many-statements
 class GenericTrainer:
 
     def __init__(self,
@@ -102,7 +102,9 @@ class GenericTrainer:
 
             # we always want to include l2 values in the summary
             if L2Regularizer not in [type(r) for r in self.regularizers]:
-                reg_values.append(L2Regularizer().value(regularizable))
+                l2_reg = L2Regularizer(name="train_l2", weight=0.)
+                tf.summary.scalar(l2_reg.name, l2_reg.value(regularizable),
+                                  collections=["summary_train"])
             for reg, reg_value in zip(self.regularizers, reg_values):
                 tf.summary.scalar(reg.name, reg_value,
                                   collections=["summary_train"])
@@ -119,8 +121,8 @@ class GenericTrainer:
                 with tf.name_scope("gradient_collection"):
                     differentiable_loss_sum = sum(
                         [(o.weight if o.weight is not None else 1.) * o.loss
-                         for o in objectives
-                         if o.gradients is None] + reg_costs)
+                         for o in objectives if o.gradients is None])
+                    differentiable_loss_sum += sum(reg_costs)
                     implicit_gradients = self._get_gradients(
                         differentiable_loss_sum)
 
@@ -130,10 +132,10 @@ class GenericTrainer:
                         for o in objectives if o.gradients is not None]
 
                     if other_gradients:
-                        gradients = _sum_gradients(
+                        self.gradients = _sum_gradients(
                             [implicit_gradients] + other_gradients)
                     else:
-                        gradients = implicit_gradients
+                        self.gradients = implicit_gradients
 
                     tf.summary.scalar("train_opt_cost",
                                       differentiable_loss_sum,
@@ -141,14 +143,13 @@ class GenericTrainer:
 
                 if clip_norm:
                     assert clip_norm > 0.0
-                    gradients = [(tf.clip_by_norm(grad, clip_norm), var)
-                                 for grad, var in gradients
-                                 if grad is not None]
+                    self.gradients = [(tf.clip_by_norm(grad, clip_norm), var)
+                                      for grad, var in self.gradients
+                                      if grad is not None]
 
                 self.all_coders = set.union(*(obj.decoder.get_dependencies()
                                               for obj in objectives))
 
-                self.gradients = gradients
                 self.train_op = self.optimizer.apply_gradients(
                     self.gradients, global_step=step)
 
